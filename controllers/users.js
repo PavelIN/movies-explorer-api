@@ -5,7 +5,7 @@ const NotFoundError = require('../errors/NotFoundError');
 const BadRequestError = require('../errors/BadRequestError');
 const ConflictError = require('../errors/ConflictError');
 
-const { NODE_ENV, JWT_SECRET } = process.env;
+const { NODE_ENV, JWT_SECRET, JWT_SECRET_DEV } = require('../utils/constants');
 
 module.exports.createUser = (req, res, next) => {
   const { name, password, email } = req.body;
@@ -40,12 +40,18 @@ module.exports.updateUser = (req, res, next) => {
     { name, email },
     { new: true, runValidators: true },
   )
-    .then((user) => res.status(200).send(user))
+    .then((user) => res.status(200).send({
+      name: user.name,
+      email: user.email,
+    }))
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(new BadRequestError('Неверный тип данных.'));
+      if (err.code === 11000) {
+        next(new ConflictError('Пользователь с данным email уже существует'));
+      } else if (err.name === 'ValidationError') {
+        next(new BadRequestError('неверный тип данных'));
+      } else {
+        next(err);
       }
-      return next(err);
     });
 };
 
@@ -55,7 +61,7 @@ module.exports.login = (req, res, next) => {
     .then((user) => {
       const token = jwt.sign(
         { _id: user._id },
-        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+        NODE_ENV === 'production' ? JWT_SECRET : JWT_SECRET_DEV,
         {
           expiresIn: '7d',
         },
@@ -66,15 +72,16 @@ module.exports.login = (req, res, next) => {
 };
 
 module.exports.getCurrentUser = (req, res, next) => {
-  const { _id } = req.body.user;
-  User.findById(_id).then((user) => {
-    // проверяем, есть ли пользователь с таким id
-    if (!user) {
-      throw new NotFoundError('Пользователь не найден');
-    }
-
-    // возвращаем пользователя, если он есть
-    return res.status(200).send(user);
-  })
-    .catch(next);
+  const { _id } = req.user;
+  User.findById(_id)
+    .then((user) => res.status(200).send({
+      name: user.name,
+      email: user.email,
+    }))
+    .catch((err) => {
+      if (err) {
+        return next(new NotFoundError('Пользователь не найден'));
+      }
+      return next();
+    });
 };

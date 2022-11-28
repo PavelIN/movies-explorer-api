@@ -1,44 +1,38 @@
 const express = require('express');
+const helmet = require('helmet');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
-const { createUser, login } = require('./controllers/users');
-const auth = require('./middlewares/auth');
+const rateLimit = require('express-rate-limit');
 const errorHandler = require('./middlewares/errorHandler');
-const NotFoundError = require('./errors/NotFoundError');
 const cors = require('./middlewares/cors');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
+const router = require('./routes');
 
-console.log(process.env.NODE_ENV);
 const {
-  signUp, signIn,
-} = require('./middlewares/validations');
+  PORT,
+  NODE_ENV,
+  MONGO_URL,
+  MONGO_URL_DEV,
+} = require('./utils/constants');
 
-const { PORT = 3000 } = process.env;
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-mongoose.connect('mongodb://localhost:27017/bitfilmsdb', {
+mongoose.connect(NODE_ENV === 'production' ? MONGO_URL : MONGO_URL_DEV, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
 app.use(cors);
+
 app.use(requestLogger);
-
-app.post('/signin', signIn, login);
-app.post('/signup', signUp, createUser);
-
-app.use(auth);
-app.use('/', require('./routes/users'));
-app.use('/', require('./routes/movies'));
-
-app.use('*', (req, res, next) => {
-  next(new NotFoundError('Страница не найдена'));
-});
+//app.use(rateLimit);
+app.use(helmet());
+app.use(router);
 
 app.use(errorLogger);
 app.use(errors());
