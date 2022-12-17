@@ -1,6 +1,6 @@
 const allowedCors = [
-  'http://oranlon.nomoredomains.icu',
-  'https://oranlon.nomoredomains.icu',
+  'http://oranlon.nomoredomains.club/',
+  'https://oranlon.nomoredomains.club/',
   'http://localhost:3000',
   'https://localhost:3000',
 ];
