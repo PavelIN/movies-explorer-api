@@ -27,7 +27,7 @@ mongoose.connect(NODE_ENV === 'production' ? MONGO_URL : MONGO_URL_DEV, {
   useUnifiedTopology: true,
 });
 
-app.use(cors);
+app.use(cors());
 
 app.use(requestLogger);
 //app.use(rateLimit);
